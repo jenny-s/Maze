@@ -2,6 +2,11 @@
 from AdafruitLibrary.Adafruit_PWM_Servo_Driver.Adafruit_PWM_Servo_Driver import PWM
 import pixy
 import ctypes
+import math
+
+# set servo channels
+servo1 = 0
+servo2 = 15
 
 # Set servo pulse with frequency of 60Hz
 def setServoPulse(channel, pulse):
@@ -14,60 +19,45 @@ def setServoPulse(channel, pulse):
   pulse /= pulseLength
   pwm.setPWM(channel, 0, pulse)
 
-# Create a NxN boolean matrix
-def matrix(n):
-  matrix = []
-  for i in range(n):
-    inside = []
-    for j in range(n):
-      inside.append(False)
-    matrix.append(inside)
-  return matrix
-
-# Print matrix
-def printMatrix(m):
-  for row in m:
-    print row
-  print
-
-# Create NxN transformation matrix
-def rotate(m, degrees):
-  transform = []
-
-  for layer in range(layers): #for each layer
-    for i in range(layer, length - layer): #loop through
-      temp = m[layer][i] #save the top element, it takes
-      #left -> top
-      m[layer][i] = m[length - i][layer]
-      #Right -> bottom
-      m[length - i]
+# Transform vector into new plane rotated by 45 degrees
+def transform(vector):
+  coordinates = [0, 0]
+  coordinates[0] = math.cos(45) * vector[0] - math.sin(45) * vector[1]
+  coordinates[1] = math.sin(45) * vector[0] + math.cos(45) * vector[1]
+  return coordinates
 
 # Calculate error in x direction
 def Error_x(x):
-  GOAL_X = 135           # Goal x-coordinate
+  GOAL_X = 166           # Goal x-coordinate
   return GOAL_X - x
 
 # Calculate error in y direction
 def Error_y(y):
-  GOAL_Y = 135
+  GOAL_Y = 88
   return GOAL_Y - y
 
 # Feedback control based on independent PID in x, y
 def PID_Control(x, y):   # Currently only does P control
   Kp = 0
 
+  cmp_x = Kp * Error_x(x)
+  cmp_y = Kp * Error_y(y)
+
   if cmp_x < servoMin: cmp_x = servoMin
   elif cmp_x > servoMax: cmp_x = servoMax
   if cmp_y < servoMin: cmp_y = servoMin
   elif cmp_y > servoMax: cmp_y = servoMax
 
-  setServoPulse(0, cmp_x)
-  setServoPulse(1, cmp_y)
+  setServoPulse(servo1, cmp_x)
+  setServoPulse(servo2, cmp_y)
 
 # __MAIN__
 def main():
-
-  print ("Balance Ball:")
+  # Vector in x-y plane
+  vector = [0,0]
+  
+  # Transform matrix
+  coordinates = transform(vector)
 
   # Initialize Pixy Interpreter thread #
   pixy.pixy_init()
@@ -87,8 +77,8 @@ def main():
 
   # Initialize servos
   pwm.setPWMFreq(60)   # Set PWM frequencies to 60Hz
-  setServoPulse(Servo1, openLoop1)
-  setServoPulse(Servo2, openLoop2)
+  setServoPulse(servo1, 400)
+  setServoPulse(servo2, 200)
 
   while True:
 
@@ -98,14 +88,13 @@ def main():
 
       # Print coordinates for testing
       print '[BLOCK_TYPE=%d, SIG=%d X=%3d Y=%3d WIDTH-%3d HEIGHT=%3d]' % (blocks.type, blocks.signature, blocks.x, blocks.y, blocks.width, blocks.height)
-      x = blocks.x
-      y = blocks.y   
+      vector = [blocks.x, blocks.y]
 
       # Transform coordinates
-       
+      coordinates = transform(vector)
     
       # Execute PID control
-      PID_Control(x, y)
+      PID_Control(coordinates[0], coordinates[1])
 
 # Run MAIN
 main()
