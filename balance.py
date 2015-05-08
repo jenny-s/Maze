@@ -5,6 +5,10 @@ import pixy
 import ctypes
 import math
 
+# ==================================================================================
+# PID control to balance ball on platform with 2 degrees of freedom
+# ==================================================================================
+
 ############################### __GLOBAL VARIABLES__ ###############################
 # Set PID constants
 Kp = 10.0
@@ -14,6 +18,10 @@ Kd = 0.0
 # Set CENTER and GOAL coordinates
 CENTER = [170, 88]
 GOAL = CENTER
+V1 = []
+V2 = []
+V3 = []
+V4 = []
 
 # Set servo channels
 servo1 = 0
@@ -76,7 +84,7 @@ def IControl(x, y):
 
 # Derivative control
 def DControl(x, y):
-  global xQue, yQue
+  global xQue, yQue, count
 
   dx = 0
   dy = 0
@@ -88,7 +96,7 @@ def DControl(x, y):
   elif count == 5: 
     dx = xQue.popleft() - xQue.pop()
     dy = yQue.popleft() - yQue.pop()
-
+    count = count - 2
   dx = dx / 5
   dy = dy / 5
       
