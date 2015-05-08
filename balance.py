@@ -17,7 +17,7 @@ DRAW = False
 
 ############################### __GLOBAL VARIABLES__ ###############################
 # Set PID constants
-Kp = 1.4
+Kp = 1.5
 Ki = 0.0
 Kd = 50.0
 
