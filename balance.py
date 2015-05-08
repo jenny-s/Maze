@@ -20,18 +20,24 @@ DRAW = False
 Kp = 1.5
 Ki = 0.0
 Kd = 50.0
+K2d = 2.0
 
-# Set CENTER and GOAL coordinates
+# Transform params
 ORIGIN = [119, 96]
 CENTER = [33, 37]
 angle = 40
-V1 = [80, -6]
-V2 = [-6, 80]
+
+# Draw params
+V1 = [60, 10]
+V2 = [9, 51]
 V3 = []
 V4 = []
 GOAL = CENTER
+if DRAW: 
+  GOAL = V1
 
-BUFFER = 10
+BUFFER = 20
+HOLD = 30
 
 XSHAPE = deque()
 YSHAPE = deque()
@@ -43,6 +49,9 @@ XSHAPE.append(V2[0])
 YSHAPE.append(V1[1])
 YSHAPE.append(CENTER[1])
 YSHAPE.append(V2[1])
+
+# Draw count variable
+holdCount = 0
 
 # Set servo channels
 servo1 = 0
@@ -75,8 +84,13 @@ yIntegralSum = 0
 # vars for derivative control
 xQue = deque()
 yQue = deque()
-count = 0
+count1 = 0
 prevTime = 0
+
+# 2nd derivative stuff
+dxQue = deque()
+dyQue = deque()
+count2 = 0
 
 ################################## __FUNCTIONS__ ###################################
 # Get system time to seconds
@@ -111,46 +125,64 @@ def IControl(x, y):
 
 # Derivative control
 def DControl(x, y):
-  global xQue, yQue, count
+  global xQue, yQue, dxQue, dyQue, count1, count2
 
   dx = 0
   dy = 0
 
-  if count < 10:
+  d2x = 0
+  d2y = 0
+
+  if count1 < 10:
     xQue.append(x)
     yQue.append(y)
-    count = count + 1
-  elif count == 10: 
+    count1 = count1 + 1
+  elif count1 == 10: 
     dx = xQue.popleft() - xQue.pop()
     dy = yQue.popleft() - yQue.pop()
-    count = count - 2
+    count1 = count1 - 2
+    if count2 < 10:
+      dxQue.append(dx)
+      dyQue.append(dy)
+      count2 = count2 + 1
+    elif  count2 == 10:
+      d2x = dxQue.popleft() - dxQue.pop()
+      d2y = dyQue.popleft() - dyQue.pop()
+      count2 = count2 - 2
   dx = dx / 10
   dy = dy / 10
       
-  return [dx, dy]
+  return [[dx, dy],[d2x, d2y]]
 
 # Draw something
 def Draw(xError, yError):
-  global GOAL
+  global GOAL, HOLD, holdCount
+
   if abs(xError) < BUFFER and abs(yError) < BUFFER:
-    GOAL[0] = XSHAPE.popleft()
-    GOAL[1] = YSHAPE.popleft()
+    holdCount = holdCount + 1
+
+    if holdCount == HOLD:
+      GOAL[0] = XSHAPE.popleft()
+      GOAL[1] = YSHAPE.popleft()
     
-    XSHAPE.append(GOAL[0])
-    YSHAPE.append(GOAL[1])
+      XSHAPE.append(GOAL[0])
+      YSHAPE.append(GOAL[1])
+      
+      holdCount = 0  # reset timing for next point
 
 # Feedback control based on independent PID in x, y
 def PID_Control(x, y):   # Currently only does P control  
   xError = Error_x(x)
   yError = Error_y(y)
+  derivative = DControl(x, y)
 
   # Decide on proper goal coordinate in shape
   if DRAW:
     Draw(xError, yError)
 
   # Calculate feedback for x and y, respectively
-  cmp_x = openLoop1 + Kp * xError + Ki * xIntegralSum + Kd * DControl(x, y)[0]
-  cmp_y = openLoop2 - Kp * yError - Ki * yIntegralSum - Kd * DControl(x, y)[1]
+  cmp_x = openLoop1 + Kp * xError + Ki * xIntegralSum + Kd * derivative[0][0] + K2d * derivative[1][0]
+  cmp_y = openLoop2 - Kp * yError - Ki * yIntegralSum - Kd * derivative[0][1] - K2d * derivative[1][1]
 
   if cmp_x < servo1Min: cmp_x = servo1Min
   elif cmp_x > servo1Max: cmp_x = servo1Max
