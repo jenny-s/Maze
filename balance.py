@@ -11,22 +11,26 @@ import time
 # ==================================================================================
 
 # CONTROL ON
-ON = True
+TEST = False
+PID = True
 
 ############################### __GLOBAL VARIABLES__ ###############################
 # Set PID constants
 Kp = 1.0
 Ki = 0.0
-Kd = 100.0
+Kd = 0.0
 
 # Set CENTER and GOAL coordinates
-CENTER = [119, 96]
-GOAL = [33, 37]
+ORIGIN = [119, 96]
+CENTER = [33, 37]
 angle = 40
-V1 = []
-V2 = []
+V1 = [78.8, -4.8]
+V2 = [-7.2, 80]
 V3 = []
 V4 = []
+GOAL = CENTER
+
+SHAPE = deque([V1,V2])
 
 # Set servo channels
 servo1 = 0
@@ -49,8 +53,8 @@ servo2Max = 600.0
 servo2Min = 10.0
 
 # Set open loop pulses
-openLoop1 = 450
-openLoop2 = 340
+openLoop1 = 320
+openLoop2 = 400
 
 # vars for integral control
 xIntegralSum = 0
@@ -71,8 +75,8 @@ def Time():
 def transform(vector):
   coordinates = [0, 0]
   translation = [0, 0]
-  translation[0] = -(vector[0] - CENTER[0])
-  translation[1] = vector[1] - CENTER[1]
+  translation[0] = -(vector[0] - ORIGIN[0])
+  translation[1] = vector[1] - ORIGIN[1]
   coordinates[0] = math.cos(angle) * translation[0] + math.sin(angle) * translation[1]
   coordinates[1] = -math.sin(angle) * translation[0] + math.cos(angle) * translation[1]
 
@@ -100,24 +104,37 @@ def DControl(x, y):
   dx = 0
   dy = 0
 
-  if count < 100:
+  if count < 10:
     xQue.append(x)
     yQue.append(y)
     count = count + 1
-  elif count == 100: 
+  elif count == 10: 
     dx = xQue.popleft() - xQue.pop()
     dy = yQue.popleft() - yQue.pop()
     count = count - 2
-  dx = dx / 5
-  dy = dy / 5
+  dx = dx / 10
+  dy = dy / 10
       
   return [dx, dy]
 
+# Draw something
+def Draw(xError, yError):
+  global GOAL
+  if xError < 5 and yError < 5:
+    GOAL = SHAPE.pop
+    SHAPE.append(GOAL)
+
 # Feedback control based on independent PID in x, y
 def PID_Control(x, y):   # Currently only does P control  
+  xError = Error_x(x)
+  yError = Error_y(y)
+
+  # Decide on proper goal coordinate in shape
+  #Draw(xError, yError)
+
   # Calculate feedback for x and y, respectively
-  cmp_x = openLoop1 + Kp * Error_x(x) + Ki * xIntegralSum + Kd * DControl(x, y)[0]
-  cmp_y = openLoop2 - Kp * Error_y(y) + Ki * yIntegralSum + Kd * DControl(x, y)[1]
+  cmp_x = openLoop1 + Kp * xError + Ki * xIntegralSum + Kd * DControl(x, y)[0]
+  cmp_y = openLoop2 - Kp * yError - Ki * yIntegralSum - Kd * DControl(x, y)[1]
 
   if cmp_x < servo1Min: cmp_x = servo1Min
   elif cmp_x > servo1Max: cmp_x = servo1Max
@@ -143,7 +160,7 @@ def main():
   pwm.setPWM(servo2, 0, openLoop2)
 
   while True:
-    t = Time()
+    #t = Time()
     #print "time: ", t - prevTime
 
     count = pixy.pixy_get_blocks(1, blocks)
@@ -154,20 +171,20 @@ def main():
       vector = [blocks.x, blocks.y]
       
       # Use coordinates if valid
-#      if vector[0] > 60 and vector[0] < 250 and vector[1] < 200:
-      if True:
+      if vector[0] > 70 and vector[0] < 265 and vector[1] < 190:
         # Transform coordinates
         coordinates = transform(vector)
         
         # Print statements for testing
-        print "transformed: ", coordinates
-        #print "error: ", Error_x(coordinates[0]), Error_y(coordinates[1])
+        if TEST:
+          print "transformed: ", coordinates
+          #print "error: ", Error_x(coordinates[0]), Error_y(coordinates[1])
         
         # Execute PID control
-        if ON:
+        if PID:
           PID_Control(coordinates[0], coordinates[1])
 
-    prevTime = t
+    #prevTime = t
 
 ################################## __Run MAIN__ ####################################
 main()

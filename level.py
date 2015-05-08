@@ -12,8 +12,8 @@ pwm = PWM(0x40)
 # Note if you'd like more debug output you can instead run:
 #pwm = PWM(0x40, debug=True)
 
-servo1 = 450  # servo1 pulse length out of 4096 for level axis
-servo2 = 340  # servo2 pulse length out of 4096 for level axis
+servo1 = 320  # servo1 pulse length out of 4096 for level axis
+servo2 = 400  # servo2 pulse length out of 4096 for level axis
 
 def setServoPulse(channel, pulse):
   pulseLength = 1000000                   # 1,000,000 us per second
