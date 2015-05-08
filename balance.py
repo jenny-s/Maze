@@ -13,24 +13,36 @@ import time
 # CONTROL ON
 TEST = False
 PID = True
+DRAW = False
 
 ############################### __GLOBAL VARIABLES__ ###############################
 # Set PID constants
-Kp = 1.0
+Kp = 1.4
 Ki = 0.0
-Kd = 0.0
+Kd = 50.0
 
 # Set CENTER and GOAL coordinates
 ORIGIN = [119, 96]
 CENTER = [33, 37]
 angle = 40
-V1 = [78.8, -4.8]
-V2 = [-7.2, 80]
+V1 = [80, -6]
+V2 = [-6, 80]
 V3 = []
 V4 = []
 GOAL = CENTER
 
-SHAPE = deque([V1,V2])
+BUFFER = 10
+
+XSHAPE = deque()
+YSHAPE = deque()
+
+XSHAPE.append(V1[0])
+XSHAPE.append(CENTER[0])
+XSHAPE.append(V2[0])
+
+YSHAPE.append(V1[1])
+YSHAPE.append(CENTER[1])
+YSHAPE.append(V2[1])
 
 # Set servo channels
 servo1 = 0
@@ -92,7 +104,7 @@ def Error_y(y):
 
 # Integral Control
 def IControl(x, y):
-  global xNavIntegralSum, yIntegralSum
+  global xIntegralSum, yIntegralSum
 
   xIntegralSum = xIntegralSum + Error_x(x)
   yIntegralSum = yIntegralSum + Error_y(y)
@@ -120,9 +132,12 @@ def DControl(x, y):
 # Draw something
 def Draw(xError, yError):
   global GOAL
-  if xError < 5 and yError < 5:
-    GOAL = SHAPE.pop
-    SHAPE.append(GOAL)
+  if abs(xError) < BUFFER and abs(yError) < BUFFER:
+    GOAL[0] = XSHAPE.popleft()
+    GOAL[1] = YSHAPE.popleft()
+    
+    XSHAPE.append(GOAL[0])
+    YSHAPE.append(GOAL[1])
 
 # Feedback control based on independent PID in x, y
 def PID_Control(x, y):   # Currently only does P control  
@@ -130,7 +145,8 @@ def PID_Control(x, y):   # Currently only does P control
   yError = Error_y(y)
 
   # Decide on proper goal coordinate in shape
-  #Draw(xError, yError)
+  if DRAW:
+    Draw(xError, yError)
 
   # Calculate feedback for x and y, respectively
   cmp_x = openLoop1 + Kp * xError + Ki * xIntegralSum + Kd * DControl(x, y)[0]
@@ -178,7 +194,8 @@ def main():
         # Print statements for testing
         if TEST:
           print "transformed: ", coordinates
-          #print "error: ", Error_x(coordinates[0]), Error_y(coordinates[1])
+          print "goal: ", GOAL
+          print "error: ", Error_x(coordinates[0]), Error_y(coordinates[1])
         
         # Execute PID control
         if PID:
