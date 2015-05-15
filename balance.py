@@ -17,10 +17,16 @@ DRAW = False
 
 ############################### __GLOBAL VARIABLES__ ###############################
 # Set PID constants
-Kp = 1.5
-Ki = 0.0
-Kd = 50.0
-K2d = 2.0
+if DRAW == False:
+  Kp = 1.5
+  Ki = 0.0
+  Kd = 50.0
+  K2d = 2.0
+if DRAW == True:
+  Kp = 1.2
+  Ki = 0.0
+  Kd = 40.0
+  K2d = 0.5
 
 # Transform params
 ORIGIN = [119, 96]
